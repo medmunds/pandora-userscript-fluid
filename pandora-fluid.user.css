@@ -23,7 +23,11 @@
         width: 280px !important;
     }
     #playerBar .progress .progressBar {
-        width: 200px !important;
+        width: 200px !important; /* normally 345px */
+    }
+    #playerBar .progress .progressBar .progressMiddle {
+        -webkit-transform-origin: left;
+        -webkit-transform: scaleX(calc(200/345));
     }
 }
 
@@ -48,42 +52,31 @@
         min-width: initial !important;
     }
 
-    #playerBar .thumbDownButton a,
-    #playerBar .thumbUpButton a,
-    #playerBar .playButton a,
-    #playerBar .pauseButton a,
-    #playerBar .skipButton a
-    {
-        width: 18px !important;
-        height: 17px !important;
-        background-size: contain !important;
-    }
-
     #playerBar .thumbDownButton,
-    #playerBar .thumbUpButton {
-        margin-right: 10px !important;
-        margin-top: 9px !important;
-    }
+    #playerBar .thumbUpButton,
+    #playerBar .playButton,
+    #playerBar .pauseButton,
+    #playerBar .skipButton
+    {
+        -webkit-transform: scale(0.6);
+        -webkit-transform-origin: top left;
 
-    #playerBar .skipButton {
-        margin-left: 10px !important;
-        margin-top: 12px !important;
+        margin-left: 5px !important;
+        margin-right: -5px !important;
+
+        margin-top: 5px !important;
+        margin-bottom: -4px !important;
     }
 
     #playerBar .playButton,
     #playerBar .pauseButton {
-        margin-top: 11px !important;
+        margin-top: 2px !important;
+        margin-right: -6px !important;
     }
 
     #playerBar .volumePosition {
-        padding-left: 10px !important;
-    }
-
-    #playerBar .pauseButton,
-    #playerBar .skipButton {
-        /* for some reason, both the div.xButton and the a within
-         * have a background image, only on these two buttons */
-        background: none !important;
+        padding-left: 10px !important; /* override 21px */
+        margin-top: -5px !important;
     }
 
     #playerBar .progress {
@@ -91,6 +84,10 @@
     }
     #playerBar .progress .progressBar {
         width: 120px !important;
+    }
+    #playerBar .progress .progressBar .progressMiddle {
+        -webkit-transform-origin: left;
+        -webkit-transform: scaleX(calc(120/345));
     }
 
 }
