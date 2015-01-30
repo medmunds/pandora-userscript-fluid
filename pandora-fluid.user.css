@@ -9,6 +9,11 @@
     min-width: 490px !important;
 }
 
+/* Make sure the top station menu is scrollable in a short window */
+.stationChangeList .stationList {
+    overflow-y: auto !important;
+    max-height: calc(100vh - 30px) !important; /* fit below the 30px-high #brandingBar */
+}
 
 /* Hide "create station" in playerBar as window gets narrow */
 @media(max-width: 960px) {
