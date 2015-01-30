@@ -1,0 +1,96 @@
+/* Remove extra space at bottom of page */
+#mainContainer {
+    height: auto !important;
+    min-height: 96px;
+}
+
+/* Allow resizing (needed for responsive queries below */
+#playerBar, #brandingBar {
+    min-width: 490px !important;
+}
+
+
+/* Hide "create station" in playerBar as window gets narrow */
+@media(max-width: 960px) {
+    #playerBar .leftcolumn {
+        display: none !important;
+    }
+}
+
+/* Shrink progressBar in playerBar as window gets even narrower */
+@media(max-width: 715px) and (min-width: 581px) {
+    #playerBar .progress {
+        width: 280px !important;
+    }
+    #playerBar .progress .progressBar {
+        width: 200px !important;
+    }
+}
+
+/* Hide everything below the player controls as window gets short */
+@media(max-height: 200px) {
+    #mainContentContainer,
+    #skinTab,
+    #footer {
+        display: none !important;
+    }
+}
+
+/* Mini player 490px x 96px */
+@media(max-width: 580px) {
+    /* Shrink the buttons to half-size */
+
+    #playerBar .middlecolumn .buttons {
+        width: 200px !important;
+    }
+
+    .middlecolumn {
+        min-width: initial !important;
+    }
+
+    #playerBar .thumbDownButton a,
+    #playerBar .thumbUpButton a,
+    #playerBar .playButton a,
+    #playerBar .pauseButton a,
+    #playerBar .skipButton a
+    {
+        width: 18px !important;
+        height: 17px !important;
+        background-size: contain !important;
+    }
+
+    #playerBar .thumbDownButton,
+    #playerBar .thumbUpButton {
+        margin-right: 10px !important;
+        margin-top: 9px !important;
+    }
+
+    #playerBar .skipButton {
+        margin-left: 10px !important;
+        margin-top: 12px !important;
+    }
+
+    #playerBar .playButton,
+    #playerBar .pauseButton {
+        margin-top: 11px !important;
+    }
+
+    #playerBar .volumePosition {
+        padding-left: 10px !important;
+    }
+
+    #playerBar .pauseButton,
+    #playerBar .skipButton {
+        /* for some reason, both the div.xButton and the a within
+         * have a background image, only on these two buttons */
+        background: none !important;
+    }
+
+    #playerBar .progress {
+        width: 200px !important;
+    }
+    #playerBar .progress .progressBar {
+        width: 120px !important;
+    }
+
+}
