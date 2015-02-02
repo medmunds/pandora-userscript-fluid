@@ -6,7 +6,7 @@
 
 /* Allow resizing (needed for responsive queries below */
 #playerBar, #brandingBar {
-    min-width: 490px !important;
+    min-width: 425px !important;
 }
 
 /* Make sure the top station menu is scrollable in a short window */
@@ -19,6 +19,16 @@
 @media(max-width: 960px) {
     #playerBar .leftcolumn {
         display: none !important;
+    }
+}
+
+/* Shrink song info in playerBar as window gets narrower */
+@media(max-width: 715px) {
+    #playerBar .rightcolumn {
+        width: 215px !important; /* normally 265px */
+    }
+    #playerBar .rightcolumn .info {
+        width: 150px !important; /* normally 200px */
     }
 }
 
@@ -45,9 +55,13 @@
     }
 }
 
-/* Mini player 490px x 96px */
+/* Mini player 425px x 96px */
 @media(max-width: 580px) {
-    /* Shrink the buttons to half-size */
+    /* Shrink the buttons and logo to 60%-size */
+    #brandingBar .leftcolumn {
+        -webkit-transform: scale(0.6);
+        -webkit-transform-origin: left;
+    }
 
     #playerBar .middlecolumn .buttons {
         width: 200px !important;
