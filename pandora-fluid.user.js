@@ -55,7 +55,10 @@
                     document.title = title;
                 }
             }
-            observePlayerState(titleFormatter.params, debounce(updateTitle, 0));
+            // Observe the window title too -- Pandora changes it during
+            // tuning, after we've already set it. (So we set it back!)
+            var titleParams = titleFormatter.params.concat(['_title']);
+            observePlayerState(titleParams, debounce(updateTitle, 0));
         }
 
         // Notifications
@@ -170,7 +173,10 @@
         // The player does a clever fade-through on album art, so there are multiple
         // .albumArt img nodes in the DOM at once. We need some custom observing...
         albumArtUrl: { selector: '.albumArt img:last-child', attr: 'src',
-                       observe: { selector: '.albumArt', options: { childList: true } } }
+                       observe: { selector: '.albumArt', options: { childList: true } } },
+
+        // The window title -- observable so we can fight with Pandora over it during launch.
+        _title: { selector: 'title' }
     };
 
     // Return an object with the current Pandora player state.
