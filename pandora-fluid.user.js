@@ -1,103 +1,271 @@
-/* jquery comes along with the page */
+(function () {
+    var pandoraConfig = {
+        // Update title bar (to make it useful for minimized windows).
+        // You can include any of ${artist}, ${song}, ${album}, ${station},
+        // and time ${elapsed} or ${remaining} time in the song.
+        // Set to null to leave title bar alone.
+        titleFormat: '${artist} - ${song} - ${album}',
 
-//for auto sign in
-var pandoraEmail = 'your@pandora.email';
-var pandoraPass = 'your-pandora-password';
+        // Display a notification when the song changes. (You'll need Growl installed.)
+        // You can include any of the variables from titleFormat above, as well as
+        // ${albumArtUrl}, ${songUrl}, ${albumUrl}, and ${artistUrl}.
+        // Set to null to skip notifications.
+        notificationFormat: {
+            title: '${song}',
+            description: 'by ${artist}\non ${album}\n[${station}]',
+            identifier: 'Pandora',
+            sticky: false,
+            icon: '${albumArtUrl}'
+        },
 
-//a couple styles to make the page layout more compactly
-$("#brandingBar .rightcolumn").css('right', '210px !important');
-$('#brandingBar .middlecolumn').css('left' ,'-211px !important');
+        // Set dockMenuItems to commands you want to include in the dock menu.
+        dockMenuItems: {
+            'Play': 'play',
+            'Pause': 'pause',
+            'Pause for 5 minutes': 'pauseAndRestart',
+            'Thumbs Down': 'thumbsDown',
+            'Thumbs Up': 'thumbsUp',
+            'Skip Track': 'skip'
+        },
 
+        // Set autoRestartAfterError true to try to recover from Pandora
+        // streaming errors that interrupt playback.
+        autoRestartAfterError: true
+    };
 
-//keep them playing by clicking the interface
-//every 30 min
-setInterval( function() {
-    $('.dots .dot').trigger('click');
-}, 20*(60*1000));
+    //
+    // (You shouldn't need to edit anything below here)
+    //
 
-//on a 1 second interval:
-// - set a better page title
-// - sometimes pandora gets confused, this clicks 
-//   the reload link in their "we've messed up" message
-setInterval( function() {
-    //page title
-    var stationName, songName, artistName;
-    stationName = $('#stationList .selected .stationNameText').text();
-    songName = $('#trackInfo .info .songTitle').text();
-    artistName = $('#trackInfo .info  .artistSummary').text();
-    window.document.title = stationName + " :: " + artistName + " :: " + songName;
-    
-    //reload link
-    var reloadLink;
-    reloadLink = $('.toastItemReload');
-    if(reloadLink.length) {
-        $('.toastItemReload').trigger('click');
-    }
-	
-    //replace ad iframe with lastfm upcoming concernts
-    //didn't want to hide ads, but some of the ads were
-    //kinda offensive ("SINGLE LADIES IN YOUR AREA")
-    //this doesn't hide other ads, just where the bad ones were.
-    adFrames = $('#advertisement iframe');
-    if(adFrames[0] && adFrames[0].src.indexOf('last.fm') == -1) {
-        $('#advertisement').css('background-color', '#eee');
-        adFrames[0].src = 'http://m.last.fm/home/eventrecs';
-    }
-}, 1000);
+    function initialize(config) {
+        // Window Title
+        if (config.titleFormat) {
+            var titleFormatter = Formatter(config.titleFormat);
+            function updateTitle() {
+                var state = getPlayerState(titleFormatter.params),
+                    title = titleFormatter(state);
+                if (title != document.title) {
+                    document.title = title;
+                }
+            }
+            observePlayerState(titleFormatter.params, debounce(updateTitle, 0));
+        }
 
+        // Notifications
+        if (config.notificationFormat && window.fluid && window.fluid.showGrowlNotification) {
+            var notificationFormatter = ObjectFormatter(config.notificationFormat);
+            function notify() {
+                var state = getPlayerState(notificationFormatter.params),
+                    notification = notificationFormatter(state),
+                    stringified = JSON.stringify(notification);
+                if (localStorage.lastNotification != stringified) {
+                    localStorage.lastNotification = stringified;
+                    window.fluid.showGrowlNotification(notification);
+                }
+            }
+            observePlayerState(notificationFormatter.params, debounce(notify, 0));
+        }
 
-//auto sign in
-//check to see if there's a login link or a user link
-//as soon as there is one, either stop this loop or
-//sign in .
-loginInterval = setInterval( function() {
-    var submitted, processed, wasVisible;
-    processed = false;
-    wasVisible = false;
-    //if .anonymousUser is visible
-    if($("#brandingBar .anonymousUser").is(':visible')) {
-        //click on the .signInLink child
-        $('#brandingBar .anonymousUser .signInLink').trigger('click');
-        //fill and submit the form with pandoraEmail and pandoraPass
-        $(".signinForm input[name='email']").attr('value', pandoraEmail);
-        $(".signinForm input[name='password']").attr('value', pandoraPass);
-        submitted = $(".signinForm input[type='submit']").trigger('click');
-        if(submitted.length > 0) {
-            processed = true;
+        // Dock menu items
+        if (config.dockMenuItems && window.fluid && window.fluid.addDockMenuItem) {
+            Object.keys(config.dockMenuItems).forEach(function(label) {
+                var command = config.dockMenuItems[label];
+                if (playerCommands[command]) {
+                    window.fluid.addDockMenuItem(label, playerCommands[command]);
+                } else {
+                    console.error("Don't know how to '" + command + "' [Pandora UserScript dockMenuItems]");
+                }
+            });
+        }
+
+        // Restart after error
+        if (config.autoRestartAfterError) {
+            // If the reload toast ever appears in the DOM, click it
+            setInterval(playerCommands.restartIfError, 5 * SECONDS);
         }
     }
 
-    if(loginInterval && processed) {
-        clearInterval(loginInterval);
+
+    //
+    // Pandora Playback Control
+    //
+
+    function makeClicker(selector) {
+        return function() {
+            var element = document.querySelector(selector);
+            if (element)
+                element.click();
+        }
     }
-}, 500);
 
-//add menu items
-window.fluid.addDockMenuItem("Play", function() {
-    $('#playbackControl .playButton a').trigger('click');
+    var playerCommands = {
+        play:       makeClicker('#playerBar .playButton a'),
+        pause:      makeClicker('#playerBar .pauseButton a'),
+        thumbsDown: makeClicker('#playerBar .thumbDownButton a'),
+        thumbsUp:   makeClicker('#playerBar .thumbUpButton a'),
+        skip:       makeClicker('#playerBar .skipButton a'),
+        pauseAndRestart: function(delay) {
+            playerCommands.pause();
+            setTimeout(playerCommands.play, delay || 5 * MINUTES);
+        },
 
-});
-
-window.fluid.addDockMenuItem("Pause", function() {
-    $('#playbackControl .pauseButton a').trigger('click');
-});
-
-window.fluid.addDockMenuItem("Pause for 5 min", function() {
-    $('#playbackControl .pauseButton a').trigger('click');
-    setTimeout(function() {
-        $('#playbackControl .playButton a').trigger('click');
-    }, (1000*60)*5);
-});
+        restartIfError: makeClicker('.toastItemReload')
+    };
 
 
-window.fluid.addDockMenuItem("Thumbs Down", function() {
-    $('#playbackControl .thumbDownButton a').trigger('click');
-});
+    //
+    // Pandora Player State
+    //
 
-window.fluid.addDockMenuItem("Thumbs Up", function() {
-    $('#playbackControl .thumbUpButton a').trigger('click');
-});
+    var playerProps = {
+        // (Property value is element's textContent.trim() unless attr specified)
+        song:       { selector: '.playerBarSong' },
+        album:      { selector: '.playerBarAlbum' },
+        artist:     { selector: '.playerBarArtist' },
+        elapsed:    { selector: '.elapsedTime' },
+        remaining:  { selector: '.remainingTime' },
+        songUrl:    { selector: '.playerBarSong',   attr: 'href' },
+        albumUrl:   { selector: '.playerBarAlbum',  attr: 'href' },
+        artistUrl:  { selector: '.playerBarArtist', attr: 'href' },
+        // Station name: pick up the current shuffle station when shuffling; else the selected station
+        station: { selector: '.shuffleStationLabelCurrent .stationNameText, .stationListItem.selected .stationNameText',
+                   observe: { selector: '.stationListHolder', expensive: true, // also catches rollover in station list
+                              options: { subtree: true, attributes: true, attributeFilter: ['class'] } }
+                 },
+        // The player does a clever fade-through on album art, so there are multiple
+        // .albumArt img nodes in the DOM at once. We need some custom observing...
+        albumArtUrl: { selector: '.albumArt img:last-child', attr: 'src',
+                       observe: { selector: '.albumArt', options: { childList: true } } }
+    };
 
-window.fluid.addDockMenuItem("Skip Track", function() {
-    $('#playbackControl .skipButton a').trigger('click');
-});
+    // Return an object with the current Pandora player state.
+    // Optional props is a list of playerProps to query.
+    function getPlayerState(props) {
+        var state = {};
+        props = props || Object.keys(playerProps);
+        props.forEach(function(prop) {
+            var propDef = playerProps[prop];
+            if (propDef) {
+                var element = propDef && document.querySelector(propDef.selector);
+                state[prop] = element
+                    ? (propDef.attr
+                        ? element.getAttribute(propDef.attr)
+                        : element.textContent.trim())
+                    : "";
+            }
+        });
+        //console.log('PlayerState', state);
+        return state;
+    }
+
+    // Calls callback whenever specific Pandora player props change.
+    // Props is a list of playerProps to observe.
+    // (You probably want to debounce if you're observing multiple props.)
+    function observePlayerState(props, callback) {
+        props = props.filter(function(prop) { return !!playerProps[prop]; }); // filter out unknown props
+        var observer = new MutationObserver(callback),
+            cheapProps = props.filter(function(prop) {
+                var propDef = playerProps[prop], observeDef = propDef.observe || propDef;
+                return !observeDef.expensive;
+            });
+        if (cheapProps.length > 1) {
+            // Skip observing expensive props, unless we're not observing anything else.
+            // (Assumes some other observed prop will change whenever an expensive one does.)
+            props = cheapProps;
+        }
+        props.forEach(function(prop) {
+            var propDef = playerProps[prop],
+                observeDef = propDef.observe || propDef,
+                element = document.querySelector(observeDef.selector),
+                options = observeDef.options ||
+                    (observeDef.attr
+                        ? { attributes: true, attributeFilter: [observeDef.attr] } // specific attribute
+                        : { childList: true, characterData: true, subtree: true }); // textContent
+            if (element) {
+                observer.observe(element, options);
+                //console.log("observing", element, options);
+            } else {
+                //console.log("can't find element to observe", prop, observeDef);
+            }
+        });
+        window.addEventListener('unload', observer.disconnect.bind(observer)); // shouldn't really be needed, but...
+        return observer;
+    }
+
+
+    //
+    // Utilities
+    //
+
+    var SECONDS = 1000,
+        MINUTES = 60 * SECONDS;
+
+    // String substitution: generates function(replacements) that
+    // replaces ${key} in template with replacements[key] value.
+    // .params is a list of unique keys used in the template.
+    function Formatter(template) {
+        var paramRe = /\$\{(\w+)\}/g,  // ${key}
+            paramsUsed = {},
+            match;
+
+        while ((match = paramRe.exec(template)) !== null) {
+            paramsUsed[match[1]] = true;
+        }
+        var replace = function(replacements) {
+            return template.replace(paramRe, function(match, name) {
+                return replacements.hasOwnProperty(name) ? replacements[name] : match[0];
+            });
+        };
+        replace.params = Object.keys(paramsUsed);
+        //console.log('Formatter', template, replace.params);
+        return replace;
+    }
+
+    // Generates function(replacements) that applies a Formatter
+    // to each string prop-val of templateObj, and copies remaining prop-vals.
+    // .params is the union of keys used in all the string templates.
+    function ObjectFormatter(templateObj) {
+        var keys = Object.keys(templateObj),
+            formatters = {},
+            paramsUsed = {};
+
+        keys.forEach(function(key) {
+            var templateValue = templateObj[key];
+            if (typeof templateObj[key] == 'string') {
+                formatters[key] = Formatter(templateValue);
+                formatters[key].params.forEach(function(param) { paramsUsed[param] = true; });
+            } else {
+                formatters[key] = function(replacements) { return templateValue; }
+            }
+        });
+
+        var replace = function(replacements) {
+            var result = {};
+            keys.forEach(function(key) {
+                result[key] = formatters[key](replacements);
+            });
+            return result;
+        };
+        replace.params = Object.keys(paramsUsed);
+        //console.log('ObjectFormatter', templateObj, replace.params);
+        return replace;
+    }
+
+
+    // Trailing-edge debounce, adapted from Underscore
+    function debounce(func, wait) {
+        var timeout;
+        return function() {
+            var context = this, args = arguments;
+            var later = function() {
+                timeout = null;
+                func.apply(context, args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Kick it all off
+    initialize(pandoraConfig);
+})();
