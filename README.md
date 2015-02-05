@@ -16,6 +16,8 @@ These userscripts and userstyles:
 * Resize the Pandora UI to keep it useful as you shrink the window.
   (All the way down to a functional 425x96px **mini player**.)
 
+* Control the volume with the **mouse wheel**.
+
 * Add Pandora playback controls to the **dock menu**.
   You can easily customize (or translate) these.
 

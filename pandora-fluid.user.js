@@ -25,8 +25,15 @@
             'Pause for 5 minutes': 'pauseAndRestart',
             'Thumbs Down': 'thumbsDown',
             'Thumbs Up': 'thumbsUp',
-            'Skip Track': 'skip'
+            'Skip Track': 'skip',
+            'Louder': 'volumeUp',
+            'Softer': 'volumeDown'
         },
+
+        // Set true if you want the mouse wheel to control volume.
+        // (Only applies over the playerBar controls -- so that you can
+        // still use the wheel for scrolling elsewhere in the window.)
+        mouseWheelAdjustsVolume: true,
 
         // Set autoRestartAfterError true to try to recover from Pandora
         // streaming errors that interrupt playback.
@@ -78,6 +85,17 @@
             });
         }
 
+        // Wheel volume
+        if (config.mouseWheelAdjustsVolume) {
+            var playerBar = document.querySelector('#playerBar');
+            playerBar.addEventListener('wheel', function(event) {
+                event.preventDefault();
+                var delta = - event.deltaY; // scroll up = louder volume
+                //console.log("Adjusting volume", delta);
+                adjustVolume(delta);
+            });
+        }
+
         // Restart after error
         if (config.autoRestartAfterError) {
             // If the reload toast ever appears in the DOM, click it
@@ -98,12 +116,29 @@
         }
     }
 
+    function adjustVolume(delta) {
+        // Volume is a jQuery-UI Draggable
+        var $volumeBackground = $('.volumeBackground'),
+            $volumeKnob = $('.volumeKnob'),
+            wasVisible = $volumeBackground.is(':visible');
+        // Can only pretend to drag while controls are visible
+        $volumeBackground.show();
+        $volumeKnob
+            .css('left', $volumeKnob.position().left + delta)
+            .click(); // prod uiDraggable into noticing the change (will also clamp it)
+        if (!wasVisible) {
+            $volumeBackground.hide();
+        }
+    }
+
     var playerCommands = {
         play:       makeClicker('#playerBar .playButton a'),
         pause:      makeClicker('#playerBar .pauseButton a'),
         thumbsDown: makeClicker('#playerBar .thumbDownButton a'),
         thumbsUp:   makeClicker('#playerBar .thumbUpButton a'),
         skip:       makeClicker('#playerBar .skipButton a'),
+        volumeUp:   adjustVolume.bind(this, 10),
+        volumeDown: adjustVolume.bind(this, -10),
         pauseAndRestart: function(delay) {
             playerCommands.pause();
             setTimeout(playerCommands.play, delay || 5 * MINUTES);
