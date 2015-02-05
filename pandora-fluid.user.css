@@ -9,6 +9,15 @@
     min-width: 425px !important;
 }
 
+/* Prevent stationList explicit sizing from jQuery
+   (was clipping list weirdly when launching app at small size */
+.stationListHolder,
+.stationListHolder .jspContainer,
+.stationListHolder .jspContainer .jspPane {
+    width: auto !important;
+}
+
+
 /* Make sure the top station menu is scrollable in a short window */
 .stationChangeList .stationList {
     overflow-y: auto !important;
